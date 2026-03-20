@@ -3,62 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Physics Game Sandbox</title>
-    <!-- Use Outfit font for premium aesthetics -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>B O N K | Neon Obsidian</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app">
         <!-- Screen 1: Landing -->
         <div id="screen-landing" class="screen active">
-            <h1 class="title">B O N K</h1>
-            <div class="panel">
-                <input type="text" id="usernameInput" placeholder="Enter username" maxlength="16">
-                <button id="btnCreateRoom" class="primary">Create Room</button>
-                <div class="divider"><span>OR</span></div>
-                <div class="join-row">
-                    <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6">
-                    <button id="btnJoinRoom" class="primary">Join</button>
+            <h1 class="display-title"><span class="glow-text">B O N K</span></h1>
+            <p class="subtitle">The Kinetic Pulse</p>
+            <div class="glass-card main-panel">
+                <div class="input-group">
+                    <label>OPERATIVE ID</label>
+                    <input type="text" id="usernameInput" placeholder="Enter username" maxlength="16">
                 </div>
-                <p id="landingError" class="error"></p>
+                <button id="btnCreateRoom" class="btn-primary neon-trigger">INITIATE LOBBY</button>
+                
+                <div class="divider"><span>OR OVERRIDE</span></div>
+                
+                <div class="input-group join-row">
+                    <input type="text" id="roomCodeInput" placeholder="ACCESS CODE" maxlength="6">
+                    <button id="btnJoinRoom" class="btn-secondary ghost-border">JOIN</button>
+                </div>
+                <p id="landingError" class="error-text"></p>
             </div>
         </div>
 
         <!-- Screen 2: Lobby -->
         <div id="screen-lobby" class="screen">
-            <h2 class="room-title">Room: <span id="lobbyRoomCode"></span> <button id="btnCopyCode" class="small">Copy</button></h2>
-            <div class="panel">
-                <h3>Players (<span id="playerCount">0</span>/8)</h3>
-                <ul id="playerList"></ul>
+            <div class="lobby-header">
+                <h2 class="room-title">SECTOR: <span id="lobbyRoomCode" class="highlight-text"></span></h2>
+                <button id="btnCopyCode" class="btn-small ghost-border">COPY</button>
+            </div>
+            
+            <div class="layout-grid">
+                <div class="glass-card side-panel">
+                    <h3>ROSTER (<span id="playerCount">0</span>/8)</h3>
+                    <ul id="playerList" class="neon-list"></ul>
+                </div>
                 
-                <div id="hostControls" style="display: none;">
-                    <div class="setting-row">
-                        <label for="pointsToWin">Points to win:</label>
-                        <select id="pointsToWin">
-                            <option value="3">3</option>
-                            <option value="5" selected>5</option>
-                            <option value="10">10</option>
-                        </select>
+                <div class="glass-card main-panel lobby-controls">
+                    <div id="hostControls" style="display: none;">
+                        <div class="control-group">
+                            <label for="pointsToWin">VICTORY THRESHOLD</label>
+                            <select id="pointsToWin" class="neon-select">
+                                <option value="3">3 POINTS</option>
+                                <option value="5" selected>5 POINTS</option>
+                                <option value="10">10 POINTS</option>
+                            </select>
+                        </div>
+                        <button id="btnStartGame" class="btn-primary neon-trigger large">COMMENCE BATTLE</button>
                     </div>
-                    <button id="btnStartGame" class="primary large">Start Game</button>
+                    
+                    <div id="nonHostControls" style="display: none;">
+                        <p class="status-pulse">Awaiting Host Authorization...</p>
+                    </div>
+                    
+                    <button id="btnLeaveLobby" class="btn-tertiary">ABORT MISSION</button>
                 </div>
-                
-                <div id="nonHostControls" style="display: none;">
-                    <p class="waiting-text">Waiting for host to start...</p>
-                </div>
-
-                <button id="btnLeaveLobby" class="secondary">Leave Room</button>
             </div>
         </div>
 
         <!-- Screen 3: Game -->
         <div id="screen-game" class="screen">
+            <div class="game-top-bar">
+                <button id="btnBackToLobby" class="btn-secondary ghost-border small" style="display: none;">RETURN TO LOBBY</button>
+            </div>
             <div class="game-container">
                 <canvas id="gameCanvas" tabindex="0"></canvas>
-                <div id="scoreboard" class="overlay-panel">
-                    <h3>Scores</h3>
-                    <ul id="scoreList"></ul>
+                <div id="scoreboard" class="glass-HUD overlay-panel">
+                    <h3>STANDINGS</h3>
+                    <ul id="scoreList" class="hud-list"></ul>
                 </div>
                 <div id="round-message" class="flash-message hidden"></div>
                 <div id="eliminated-message" class="flash-message hidden"></div>
@@ -67,21 +83,33 @@
 
         <!-- Screen 4: Match End -->
         <div id="screen-matchend" class="screen">
-            <h1 id="matchWinnerMessage" class="title"></h1>
-            <div class="panel">
-                <h3>Final Scores</h3>
-                <ul id="finalScoreList"></ul>
-                
-                <div id="matchEndHostControls" style="display: none;">
-                    <button id="btnPlayAgain" class="primary large">Play Again</button>
+            <div class="victory-container">
+                <h1 id="matchWinnerMessage" class="display-title victory-glow"></h1>
+                <div class="glass-card main-panel">
+                    <h3>FINAL STANDINGS</h3>
+                    <ul id="finalScoreList" class="neon-list large"></ul>
+                    
+                    <div id="matchEndHostControls" style="display: none;" class="mt-4">
+                        <button id="btnPlayAgain" class="btn-primary neon-trigger large">REMATCH</button>
+                    </div>
+                    
+                    <button id="btnLeaveMatch" class="btn-tertiary mt-2">EXIT ARENA</button>
                 </div>
-                
-                <button id="btnLeaveMatch" class="secondary">Leave Room</button>
             </div>
         </div>
+
+        <!-- Persistent Chat Panel -->
+        <div id="chat-panel" class="glass-card chat-panel">
+            <div class="chat-header">COMMS LINK</div>
+            <ul id="chatMessages" class="chat-messages"></ul>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Transmit..." autocomplete="off">
+                <button id="btnSendChat" class="btn-primary small">TX</button>
+            </div>
+        </div>
+
     </div>
     
-    <!-- Load Socket.io supplied by the server -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
 </body>

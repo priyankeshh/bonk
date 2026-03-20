@@ -43,7 +43,12 @@ const els = {
     finalScoreList: document.getElementById('finalScoreList'),
     btnPlayAgain: document.getElementById('btnPlayAgain'),
     matchEndHostControls: document.getElementById('matchEndHostControls'),
-    btnLeaveMatch: document.getElementById('btnLeaveMatch')
+    btnLeaveMatch: document.getElementById('btnLeaveMatch'),
+    
+    chatMessages: document.getElementById('chatMessages'),
+    chatInput: document.getElementById('chatInput'),
+    btnSendChat: document.getElementById('btnSendChat'),
+    btnBackToLobby: document.getElementById('btnBackToLobby')
 };
 
 // State
@@ -96,6 +101,9 @@ socket.on('lobbyUpdate', (roomState) => {
     els.hostControls.style.display = isHost ? 'block' : 'none';
     els.nonHostControls.style.display = isHost ? 'none' : 'block';
     els.matchEndHostControls.style.display = isHost ? 'block' : 'none';
+    if (els.btnBackToLobby) {
+        els.btnBackToLobby.style.display = isHost ? 'inline-block' : 'none';
+    }
     
     els.playerList.innerHTML = '';
     roomState.players.forEach(p => {
@@ -168,6 +176,19 @@ function updateScoreboard(scores) {
     });
 }
 
+socket.on('chatMessage', ({ username, message }) => {
+    if (!els.chatMessages) return;
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${username}:</strong> ${message}`;
+    els.chatMessages.appendChild(li);
+    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+});
+
+socket.on('returnedToLobby', () => {
+    isGameActive = false;
+    showScreen('lobby');
+});
+
 // ==============================
 // DOM Events
 // ==============================
@@ -211,11 +232,37 @@ function leaveRoom() {
 els.btnLeaveLobby.addEventListener('click', leaveRoom);
 els.btnLeaveMatch.addEventListener('click', leaveRoom);
 
+if (els.btnSendChat && els.chatInput) {
+    els.btnSendChat.addEventListener('click', () => {
+        const msg = els.chatInput.value.trim();
+        if (msg) {
+            socket.emit('chatMessage', { message: msg });
+            els.chatInput.value = '';
+        }
+    });
+    els.chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') els.btnSendChat.click();
+    });
+}
+
+if (els.btnBackToLobby) {
+    els.btnBackToLobby.addEventListener('click', () => {
+        socket.emit('backToLobby');
+    });
+}
+
 // Input mapping
-const keys = { 'w': 'up', 'a': 'left', 'd': 'right', 'ArrowUp': 'up', 'ArrowLeft': 'left', 'ArrowRight': 'right', ' ': 'up' };
-const keyState = { left: false, right: false, up: false };
+const keys = { 
+    'w': 'up', 'a': 'left', 's': 'down', 'd': 'right', 
+    'ArrowUp': 'up', 'ArrowLeft': 'left', 'ArrowDown': 'down', 'ArrowRight': 'right', 
+    ' ': 'up', 'W': 'up', 'A': 'left', 'S': 'down', 'D': 'right' 
+};
+const keyState = { left: false, right: false, up: false, down: false };
 
 window.addEventListener('keydown', (e) => {
+    if (e.target.tagName !== 'INPUT' && ['w','W','s','S',' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+    }
     if (!isGameActive || isEliminated) return;
     const action = keys[e.key];
     if (action && !keyState[action]) {

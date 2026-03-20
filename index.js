@@ -83,8 +83,14 @@ function processRoomEndRound(room) {
                 clearInterval(room.loopInterval);
                 room.loopInterval = null;
                 
-                // reset scores for future
-                room.players.forEach(p => p.score = 0);
+                // reset scores for future, clear bodies
+                room.players.forEach(p => {
+                    p.score = 0;
+                    if (!p.eliminated) {
+                        World.remove(room.engine.world, p.body);
+                        p.eliminated = true;
+                    }
+                });
                 
                 io.to(room.id).emit('matchEnd', { winnerName: matchWinnerName, scores });
             } else {
@@ -105,7 +111,7 @@ function startRound(room) {
         Body.setPosition(p.body, sp);
         Body.setVelocity(p.body, { x: 0, y: 0 });
         Matter.Sleeping.set(p.body, false);
-        p.input = { left: false, right: false, up: false };
+        p.input = { left: false, right: false, up: false, down: false };
         World.add(room.engine.world, p.body);
         i++;
     });
@@ -249,7 +255,7 @@ io.on('connection', (socket) => {
             id: socket.id,
             name: username.substring(0, 16),
             body: pBody,
-            input: { left: false, right: false, up: false },
+            input: { left: false, right: false, up: false, down: false },
             eliminated: true,
             score: 0
         });
@@ -268,11 +274,45 @@ io.on('connection', (socket) => {
 
         startRound(room);
         
-        if (!room.loopInterval) {
-            room.loopInterval = setInterval(() => {
-                roomLoop(room);
-            }, TICK_RATE);
+        clearInterval(room.loopInterval);
+        room.loopInterval = null;
+        room.loopInterval = setInterval(() => {
+            roomLoop(room);
+        }, TICK_RATE);
+    });
+
+    socket.on('chatMessage', ({ message }) => {
+        const code = socketRooms[socket.id];
+        if (!code) return;
+        const room = rooms[code];
+        const p = room.players.get(socket.id);
+        if (!p) return;
+
+        io.to(code).emit('chatMessage', { username: p.name, message });
+    });
+
+    socket.on('backToLobby', () => {
+        const code = socketRooms[socket.id];
+        if (!code) return;
+        const room = rooms[code];
+        if (room.host !== socket.id) return;
+        if (room.state === 'waiting') return;
+
+        room.state = 'waiting';
+        if (room.loopInterval) {
+            clearInterval(room.loopInterval);
+            room.loopInterval = null;
         }
+
+        room.players.forEach(p => {
+            p.score = 0;
+            if (!p.eliminated) {
+                World.remove(room.engine.world, p.body);
+                p.eliminated = true;
+            }
+        });
+
+        io.to(code).emit('returnedToLobby');
     });
 
     socket.on('input', (data) => {
@@ -288,10 +328,12 @@ io.on('connection', (socket) => {
             if (data.key === 'left') p.input.left = true;
             if (data.key === 'right') p.input.right = true;
             if (data.key === 'up') p.input.up = true;
+            if (data.key === 'down') p.input.down = true;
         } else if (data.type === 'keyup') {
             if (data.key === 'left') p.input.left = false;
             if (data.key === 'right') p.input.right = false;
             if (data.key === 'up') p.input.up = false;
+            if (data.key === 'down') p.input.down = false;
         }
     });
 
@@ -330,6 +372,7 @@ function roomLoop(room) {
         const moveForce = 0.015 * pb.mass;
         if (input.left) Body.applyForce(pb, pb.position, { x: -moveForce, y: 0 });
         if (input.right) Body.applyForce(pb, pb.position, { x: moveForce, y: 0 });
+        if (input.down) Body.applyForce(pb, pb.position, { x: 0, y: moveForce });
 
         if (input.up && pb.isGrounded) {
             Matter.Sleeping.set(pb, false);
