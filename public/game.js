@@ -8,12 +8,27 @@ canvas.height = 600;
 // Track the state coming from the server
 // Now a map of socket.id -> {x, y, angle}
 let serverState = {};
+let platforms = [];
+let isEliminated = false;
 
 // Listen for state updates
 // Future Phase 3: We will buffer these updates and interpolate between them.
 // For now, we simply update the variable directly.
 socket.on('state', (state) => {
     serverState = state;
+    if (serverState[socket.id]) {
+        isEliminated = false;
+    }
+});
+
+socket.on('mapData', (data) => {
+    platforms = data;
+});
+
+socket.on('playerEliminated', (id) => {
+    if (id === socket.id) {
+        isEliminated = true;
+    }
 });
 
 // Input mapping
@@ -55,11 +70,12 @@ function render() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw floor 
-    // Server says: x=400 (center), y=580 (center), w=800, h=40
+    // Draw platforms
     ctx.fillStyle = '#333';
-    // fillRect wants top-left coordinates: 400 - 400 = 0, 580 - 20 = 560
-    ctx.fillRect(0, 560, 800, 40);
+    platforms.forEach(p => {
+        // Matter.js rectangle coordinates are center-based, canvas fillRect is top-left
+        ctx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+    });
 
     // Draw all players
     for (const id in serverState) {
@@ -91,6 +107,17 @@ function render() {
         ctx.stroke();
         
         ctx.restore();
+    }
+
+    // Draw elimination screen overlay if eliminate
+    if (isEliminated) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('You were eliminated — respawning...', canvas.width / 2, canvas.height / 2);
     }
 
     requestAnimationFrame(render);

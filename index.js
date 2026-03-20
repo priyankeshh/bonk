@@ -22,9 +22,10 @@ const engine = Engine.create();
 // Normal gravity
 engine.gravity.y = 1;
 
-// Create static floor
-// Canvas will be 800x600. Floor at bottom.
-const floor = Bodies.rectangle(400, 580, 800, 40, { isStatic: true });
+const { platforms } = require('./shared/constants');
+const staticPlatforms = platforms.map(p => 
+    Bodies.rectangle(p.x, p.y, p.w, p.h, { isStatic: true })
+);
 
 // Create a single dynamic circle (Player)
 const players = {}; // Map socket.id to { body, input }
@@ -50,10 +51,11 @@ Events.on(engine, 'collisionEnd', (event) => {
     });
 });
 
-World.add(engine.world, [floor]);
+World.add(engine.world, staticPlatforms);
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
+    socket.emit('mapData', platforms);
 
     // Spawn a new player body for this connection
     const newPlayer = Bodies.circle(400, 100, 20, {
@@ -70,7 +72,8 @@ io.on('connection', (socket) => {
 
     players[socket.id] = {
         body: newPlayer,
-        input: { left: false, right: false, up: false }
+        input: { left: false, right: false, up: false },
+        eliminated: false
     };
 
     World.add(engine.world, newPlayer);
@@ -78,7 +81,7 @@ io.on('connection', (socket) => {
     // Listen for input state changes
     socket.on('input', (data) => {
         const p = players[socket.id];
-        if (!p) return;
+        if (!p || p.eliminated) return;
 
         if (data.type === 'keydown') {
             if (data.key === 'left') p.input.left = true;
@@ -106,7 +109,27 @@ setInterval(() => {
     const state = {};
 
     Object.values(players).forEach(p => {
+        if (p.eliminated) return;
+
         const playerBody = p.body;
+        
+        if (playerBody.position.y > 800) {
+            p.eliminated = true;
+            World.remove(engine.world, playerBody);
+            io.emit('playerEliminated', playerBody.socketId);
+
+            setTimeout(() => {
+                const sp = players[playerBody.socketId];
+                if (sp) {
+                    Body.setPosition(sp.body, { x: 400, y: 100 });
+                    Body.setVelocity(sp.body, { x: 0, y: 0 });
+                    World.add(engine.world, sp.body);
+                    sp.eliminated = false;
+                }
+            }, 2000);
+            return;
+        }
+
         const playerInput = p.input;
 
         // Apply continuous forces based on held inputs
