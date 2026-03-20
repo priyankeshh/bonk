@@ -12,10 +12,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Matter.js aliases
 const Engine = Matter.Engine,
-      World = Matter.World,
-      Bodies = Matter.Bodies,
-      Body = Matter.Body,
-      Events = Matter.Events;
+    World = Matter.World,
+    Bodies = Matter.Bodies,
+    Body = Matter.Body,
+    Events = Matter.Events;
 
 // Create engine and world
 const engine = Engine.create();
@@ -56,11 +56,13 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     // Spawn a new player body for this connection
-    const newPlayer = Bodies.circle(400, 100, 20, { 
-        restitution: 0.5, 
-        friction: 0.05,
-        density: 0.002,
-        sleepThreshold: -1,
+    const newPlayer = Bodies.circle(400, 100, 20, {
+        restitution: 0.4,
+        frictionAir: 0.01,
+        friction: 0.8,
+        frictionStatic: 1.0,
+        density: 0.001,
+        inertia: Infinity,
         label: 'player'
     });
     newPlayer.isGrounded = false;
@@ -70,7 +72,7 @@ io.on('connection', (socket) => {
         body: newPlayer,
         input: { left: false, right: false, up: false }
     };
-    
+
     World.add(engine.world, newPlayer);
 
     // Listen for input state changes
@@ -108,14 +110,14 @@ setInterval(() => {
         const playerInput = p.input;
 
         // Apply continuous forces based on held inputs
-        const moveForce = 0.01;
+        const moveForce = 0.005 * playerBody.mass;
         if (playerInput.left) {
             Body.applyForce(playerBody, playerBody.position, { x: -moveForce, y: 0 });
         }
         if (playerInput.right) {
             Body.applyForce(playerBody, playerBody.position, { x: moveForce, y: 0 });
         }
-        
+
         // Jump impulse
         if (playerInput.up && playerBody.isGrounded) {
             Matter.Sleeping.set(playerBody, false);
