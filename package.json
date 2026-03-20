@@ -1,0 +1,26 @@
+{
+  "name": "bonk",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/priyankeshh/bonk.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/priyankeshh/bonk/issues"
+  },
+  "homepage": "https://github.com/priyankeshh/bonk#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "matter-js": "^0.20.0",
+    "socket.io": "^4.8.3"
+  }
+}
