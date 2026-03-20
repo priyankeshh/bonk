@@ -116,6 +116,13 @@ function startRound(room) {
         i++;
     });
 
+    if (room.loopInterval) clearInterval(room.loopInterval);
+    room.loopInterval = null;
+    console.log(`[ROOM ${room.id}] New interval fresh-started.`);
+    room.loopInterval = setInterval(() => {
+        roomLoop(room);
+    }, TICK_RATE);
+
     io.to(room.id).emit('roundStart');
 }
 
@@ -273,12 +280,6 @@ io.on('connection', (socket) => {
         room.pointsToWin = pointsToWin || 5;
 
         startRound(room);
-        
-        clearInterval(room.loopInterval);
-        room.loopInterval = null;
-        room.loopInterval = setInterval(() => {
-            roomLoop(room);
-        }, TICK_RATE);
     });
 
     socket.on('chatMessage', ({ message }) => {

@@ -3,28 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B O N K | Neon Obsidian</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <title>Bonk.io Clone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app">
         <!-- Screen 1: Landing -->
         <div id="screen-landing" class="screen active">
-            <h1 class="display-title"><span class="glow-text">B O N K</span></h1>
-            <p class="subtitle">The Kinetic Pulse</p>
-            <div class="glass-card main-panel">
-                <div class="input-group">
-                    <label>OPERATIVE ID</label>
-                    <input type="text" id="usernameInput" placeholder="Enter username" maxlength="16">
-                </div>
-                <button id="btnCreateRoom" class="btn-primary neon-trigger">INITIATE LOBBY</button>
-                
-                <div class="divider"><span>OR OVERRIDE</span></div>
-                
-                <div class="input-group join-row">
-                    <input type="text" id="roomCodeInput" placeholder="ACCESS CODE" maxlength="6">
-                    <button id="btnJoinRoom" class="btn-secondary ghost-border">JOIN</button>
+            <h1 class="logo">B O N K . I O</h1>
+            <div class="panel">
+                <input type="text" id="usernameInput" placeholder="Enter username" maxlength="16">
+                <button id="btnCreateRoom" class="btn-primary mt-3">Create Room</button>
+                <div class="join-row">
+                    <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6">
+                    <button id="btnJoinRoom" class="btn-secondary">Join</button>
                 </div>
                 <p id="landingError" class="error-text"></p>
             </div>
@@ -32,50 +25,52 @@
 
         <!-- Screen 2: Lobby -->
         <div id="screen-lobby" class="screen">
-            <div class="lobby-header">
-                <h2 class="room-title">SECTOR: <span id="lobbyRoomCode" class="highlight-text"></span></h2>
-                <button id="btnCopyCode" class="btn-small ghost-border">COPY</button>
-            </div>
-            
-            <div class="layout-grid">
-                <div class="glass-card side-panel">
-                    <h3>ROSTER (<span id="playerCount">0</span>/8)</h3>
-                    <ul id="playerList" class="neon-list"></ul>
-                </div>
-                
-                <div class="glass-card main-panel lobby-controls">
-                    <div id="hostControls" style="display: none;">
-                        <div class="control-group">
-                            <label for="pointsToWin">VICTORY THRESHOLD</label>
-                            <select id="pointsToWin" class="neon-select">
-                                <option value="3">3 POINTS</option>
-                                <option value="5" selected>5 POINTS</option>
-                                <option value="10">10 POINTS</option>
-                            </select>
+            <div class="lobby-card">
+                <div class="lobby-grid">
+                    <div class="lobby-left-col">
+                        <div class="section-label">Playing (<span id="playerCount">0</span>/8)</div>
+                        <ul id="playerList"></ul>
+                    </div>
+                    
+                    <div class="lobby-right-col">
+                        <div class="section-label">Game Settings</div>
+                        <div class="settings-content">
+                            <h2 class="room-title">Room: <span id="lobbyRoomCode"></span> <button id="btnCopyCode" class="btn-small btn-secondary ghost-border">Copy</button></h2>
+                            
+                            <div id="hostControls" style="display: none; width: 100%;">
+                                <div class="setting-row">
+                                    <label class="setting-label" for="pointsToWin">Rounds to win:</label>
+                                    <select id="pointsToWin" class="minimal-select">
+                                        <option value="3">3</option>
+                                        <option value="5" selected>5</option>
+                                        <option value="10">10</option>
+                                    </select>
+                                </div>
+                                <button id="btnStartGame" class="btn-primary" style="width: 100%; margin-top: 16px;">Start Game</button>
+                            </div>
+                            
+                            <div id="nonHostControls" style="display: none;">
+                                <p class="waiting-text">Waiting for host to start...</p>
+                            </div>
+                            
+                            <div class="button-group mt-auto" style="margin-top: auto; padding-top: 24px;">
+                                <button id="btnLeaveLobby" class="btn-secondary" style="width: 100%;">Leave Room</button>
+                            </div>
                         </div>
-                        <button id="btnStartGame" class="btn-primary neon-trigger large">COMMENCE BATTLE</button>
                     </div>
-                    
-                    <div id="nonHostControls" style="display: none;">
-                        <p class="status-pulse">Awaiting Host Authorization...</p>
-                    </div>
-                    
-                    <button id="btnLeaveLobby" class="btn-tertiary">ABORT MISSION</button>
                 </div>
             </div>
         </div>
 
         <!-- Screen 3: Game -->
         <div id="screen-game" class="screen">
-            <div class="game-top-bar">
-                <button id="btnBackToLobby" class="btn-secondary ghost-border small" style="display: none;">RETURN TO LOBBY</button>
+            <button id="btnBackToLobby" class="btn-secondary btn-small top-left-btn" style="display: none;">Back to Lobby</button>
+            <div id="scoreboard" class="overlay-panel top-right-panel">
+                <ul id="scoreList"></ul>
             </div>
+            
             <div class="game-container">
                 <canvas id="gameCanvas" tabindex="0"></canvas>
-                <div id="scoreboard" class="glass-HUD overlay-panel">
-                    <h3>STANDINGS</h3>
-                    <ul id="scoreList" class="hud-list"></ul>
-                </div>
                 <div id="round-message" class="flash-message hidden"></div>
                 <div id="eliminated-message" class="flash-message hidden"></div>
             </div>
@@ -83,31 +78,26 @@
 
         <!-- Screen 4: Match End -->
         <div id="screen-matchend" class="screen">
-            <div class="victory-container">
-                <h1 id="matchWinnerMessage" class="display-title victory-glow"></h1>
-                <div class="glass-card main-panel">
-                    <h3>FINAL STANDINGS</h3>
-                    <ul id="finalScoreList" class="neon-list large"></ul>
-                    
-                    <div id="matchEndHostControls" style="display: none;" class="mt-4">
-                        <button id="btnPlayAgain" class="btn-primary neon-trigger large">REMATCH</button>
-                    </div>
-                    
-                    <button id="btnLeaveMatch" class="btn-tertiary mt-2">EXIT ARENA</button>
+            <div class="panel match-end-panel">
+                <h1 id="matchWinnerMessage" class="winner-title"></h1>
+                <ul id="finalScoreList" class="final-scores"></ul>
+                
+                <div id="matchEndHostControls" style="display: none; width: 100%;">
+                    <button id="btnPlayAgain" class="btn-primary" style="width: 100%;">Play Again</button>
                 </div>
+                <button id="btnLeaveMatch" class="btn-secondary" style="width: 100%; margin-top: 8px;">Leave Room</button>
             </div>
         </div>
 
         <!-- Persistent Chat Panel -->
-        <div id="chat-panel" class="glass-card chat-panel">
-            <div class="chat-header">COMMS LINK</div>
+        <div id="chat-panel" class="chat-panel">
+            <div class="chat-header">Chat</div>
             <ul id="chatMessages" class="chat-messages"></ul>
             <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Transmit..." autocomplete="off">
-                <button id="btnSendChat" class="btn-primary small">TX</button>
+                <input type="text" id="chatInput" placeholder="Press enter to send a message" autocomplete="off">
+                <button id="btnSendChat" class="btn-primary" style="display:none;">Send</button>
             </div>
         </div>
-
     </div>
     
     <script src="/socket.io/socket.io.js"></script>

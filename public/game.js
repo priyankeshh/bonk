@@ -182,6 +182,12 @@ socket.on('chatMessage', ({ username, message }) => {
     li.innerHTML = `<strong>${username}:</strong> ${message}`;
     els.chatMessages.appendChild(li);
     els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+
+    if (isGameActive) {
+        setTimeout(() => {
+            li.classList.add('fade-out');
+        }, 5000);
+    }
 });
 
 socket.on('returnedToLobby', () => {
@@ -240,9 +246,6 @@ if (els.btnSendChat && els.chatInput) {
             els.chatInput.value = '';
         }
     });
-    els.chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') els.btnSendChat.click();
-    });
 }
 
 if (els.btnBackToLobby) {
@@ -259,7 +262,26 @@ const keys = {
 };
 const keyState = { left: false, right: false, up: false, down: false };
 
+let isChatFocused = false;
+if (els.chatInput) {
+    els.chatInput.addEventListener('focus', () => isChatFocused = true);
+    els.chatInput.addEventListener('blur', () => isChatFocused = false);
+}
+
 window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        if (!isChatFocused) {
+            if (els.chatInput) els.chatInput.focus();
+            e.preventDefault();
+            return;
+        } else {
+            if (els.btnSendChat) els.btnSendChat.click();
+            return;
+        }
+    }
+
+    if (isChatFocused) return; // Block game keys while chatting
+
     if (e.target.tagName !== 'INPUT' && ['w','W','s','S',' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
         e.preventDefault();
     }
