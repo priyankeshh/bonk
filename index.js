@@ -7,80 +7,281 @@ const io = new Server(server);
 const Matter = require('matter-js');
 const path = require('path');
 
-// Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Matter.js aliases
 const Engine = Matter.Engine,
-    World = Matter.World,
-    Bodies = Matter.Bodies,
-    Body = Matter.Body,
-    Events = Matter.Events;
+      World = Matter.World,
+      Bodies = Matter.Bodies,
+      Body = Matter.Body,
+      Events = Matter.Events;
 
-// Create engine and world
-const engine = Engine.create();
-// Normal gravity
-engine.gravity.y = 1;
+const { platforms, spawnPoints } = require('./shared/constants');
 
-const { platforms } = require('./shared/constants');
-const staticPlatforms = platforms.map(p => 
-    Bodies.rectangle(p.x, p.y, p.w, p.h, { isStatic: true, friction: 0.01 })
-);
+// State maps
+const rooms = {}; // code -> Room object
+const socketRooms = {}; // socket.id -> code
 
-// Create a single dynamic circle (Player)
-const players = {}; // Map socket.id to { body, input }
+const TICK_RATE = 1000 / 60;
 
-Events.on(engine, 'collisionStart', (event) => {
-    event.pairs.forEach((pair) => {
-        if (pair.bodyA.label === 'player') pair.bodyA.isGrounded = true;
-        if (pair.bodyB.label === 'player') pair.bodyB.isGrounded = true;
+// Helper to generate 6 letter code
+function generateCode() {
+    let result = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+function processRoomEndRound(room) {
+    // If only one player left (or 0 if solo)
+    let aliveCount = 0;
+    let winner = null;
+    
+    room.players.forEach(p => {
+        if (!p.eliminated) {
+            aliveCount++;
+            winner = p;
+        }
     });
-});
 
-Events.on(engine, 'collisionActive', (event) => {
-    event.pairs.forEach((pair) => {
-        if (pair.bodyA.label === 'player') pair.bodyA.isGrounded = true;
-        if (pair.bodyB.label === 'player') pair.bodyB.isGrounded = true;
+    // Handle solo mode win or multiplayer win
+    if (aliveCount <= 1 && room.players.size > 0) {
+        room.state = 'roundEnd';
+        
+        let winnerName = null;
+        let winnerId = null;
+        
+        if (winner) {
+            winner.score++;
+            winnerName = winner.name;
+            winnerId = winner.id;
+        }
+
+        const scores = {};
+        room.players.forEach(p => {
+            scores[p.id] = { name: p.name, score: p.score };
+        });
+
+        io.to(room.id).emit('roundEnd', { winnerId, winnerName, scores });
+
+        setTimeout(() => {
+            if (!rooms[room.id]) return; // room dissolved
+
+            let matchOver = false;
+            let matchWinnerName = null;
+            
+            room.players.forEach(p => {
+                if (p.score >= room.pointsToWin) {
+                    matchOver = true;
+                    matchWinnerName = p.name;
+                }
+            });
+
+            if (matchOver) {
+                room.state = 'waiting';
+                clearInterval(room.loopInterval);
+                room.loopInterval = null;
+                
+                // reset scores for future
+                room.players.forEach(p => p.score = 0);
+                
+                io.to(room.id).emit('matchEnd', { winnerName: matchWinnerName, scores });
+            } else {
+                startRound(room);
+            }
+        }, 3000);
+    }
+}
+
+function startRound(room) {
+    room.state = 'inRound';
+    
+    // Reset all players
+    let i = 0;
+    room.players.forEach(p => {
+        p.eliminated = false;
+        const sp = spawnPoints[i % spawnPoints.length];
+        Body.setPosition(p.body, sp);
+        Body.setVelocity(p.body, { x: 0, y: 0 });
+        Matter.Sleeping.set(p.body, false);
+        p.input = { left: false, right: false, up: false };
+        World.add(room.engine.world, p.body);
+        i++;
     });
-});
 
-Events.on(engine, 'collisionEnd', (event) => {
-    event.pairs.forEach((pair) => {
-        if (pair.bodyA.label === 'player') pair.bodyA.isGrounded = false;
-        if (pair.bodyB.label === 'player') pair.bodyB.isGrounded = false;
+    io.to(room.id).emit('roundStart');
+}
+
+function createRoomObject(code) {
+    const engine = Engine.create();
+    engine.gravity.y = 1;
+    
+    const staticPlatforms = platforms.map(p => 
+        Bodies.rectangle(p.x, p.y, p.w, p.h, { isStatic: true, friction: 0.01 })
+    );
+    World.add(engine.world, staticPlatforms);
+
+    // Collision events for this room
+    Events.on(engine, 'collisionStart', (event) => {
+        event.pairs.forEach((pair) => {
+            if (pair.bodyA.label === 'player') pair.bodyA.isGrounded = true;
+            if (pair.bodyB.label === 'player') pair.bodyB.isGrounded = true;
+        });
     });
-});
+    Events.on(engine, 'collisionEnd', (event) => {
+        event.pairs.forEach((pair) => {
+            if (pair.bodyA.label === 'player') pair.bodyA.isGrounded = false;
+            if (pair.bodyB.label === 'player') pair.bodyB.isGrounded = false;
+        });
+    });
 
-World.add(engine.world, staticPlatforms);
+    return {
+        id: code,
+        host: null,
+        players: new Map(), // socket.id -> playerData
+        engine: engine,
+        state: 'waiting', // waiting, inRound, roundEnd
+        loopInterval: null,
+        pointsToWin: 5
+    };
+}
+
+function broadcastLobbyUpdate(room) {
+    const playersArr = Array.from(room.players.values()).map(p => ({
+        id: p.id,
+        name: p.name,
+        score: p.score
+    }));
+    io.to(room.id).emit('lobbyUpdate', {
+        id: room.id,
+        host: room.host,
+        players: playersArr,
+        maxPlayers: 8
+    });
+}
+
+function removePlayerFromRoom(socketId) {
+    const code = socketRooms[socketId];
+    if (!code) return;
+
+    const room = rooms[code];
+    if (!room) return;
+
+    const p = room.players.get(socketId);
+    if (p) {
+        if (!p.eliminated && room.state === 'inRound') {
+            World.remove(room.engine.world, p.body);
+        }
+        room.players.delete(socketId);
+    }
+    
+    delete socketRooms[socketId];
+
+    if (room.players.size === 0) {
+        if (room.loopInterval) clearInterval(room.loopInterval);
+        delete rooms[code];
+    } else {
+        if (room.host === socketId) {
+            room.host = Array.from(room.players.keys())[0];
+        }
+        broadcastLobbyUpdate(room);
+        
+        if (room.state === 'inRound' && !p.eliminated) {
+            io.to(room.id).emit('playerEliminated', socketId);
+            processRoomEndRound(room);
+        }
+    }
+}
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
     socket.emit('mapData', platforms);
 
-    // Spawn a new player body for this connection
-    const newPlayer = Bodies.circle(400, 100, 20, {
-        restitution: 0.5,
-        frictionAir: 0.01,
-        friction: 0.01,
-        frictionStatic: 1.0,
-        density: 0.001,
-        inertia: Infinity,
-        label: 'player'
+    socket.on('createRoom', (username) => {
+        removePlayerFromRoom(socket.id);
+        
+        let code = generateCode();
+        while (rooms[code]) code = generateCode();
+
+        const room = createRoomObject(code);
+        rooms[code] = room;
+        
+        // Setup player
+        setupPlayerInRoom(socket, room, username, true);
+        socket.emit('roomCreated', code);
     });
-    newPlayer.isGrounded = false;
-    newPlayer.socketId = socket.id; // Helpful reference
 
-    players[socket.id] = {
-        body: newPlayer,
-        input: { left: false, right: false, up: false },
-        eliminated: false
-    };
+    socket.on('joinRoom', ({ code, username }) => {
+        removePlayerFromRoom(socket.id);
+        
+        const room = rooms[code];
+        if (!room) {
+            return socket.emit('roomError', 'Room not found');
+        }
+        if (room.players.size >= 8) {
+            return socket.emit('roomError', 'Room is full');
+        }
+        if (room.state !== 'waiting') {
+            return socket.emit('roomError', 'Game in progress');
+        }
 
-    World.add(engine.world, newPlayer);
+        setupPlayerInRoom(socket, room, username, false);
+        socket.emit('roomJoined', code);
+    });
 
-    // Listen for input state changes
+    function setupPlayerInRoom(socket, room, username, isHost) {
+        socket.join(room.id);
+        socketRooms[socket.id] = room.id;
+        if (isHost) room.host = socket.id;
+
+        const pBody = Bodies.circle(0, -100, 20, {
+            restitution: 0.5,
+            frictionAir: 0.01,
+            friction: 0.01,
+            frictionStatic: 1.0,
+            density: 0.001,
+            inertia: Infinity,
+            label: 'player'
+        });
+        pBody.isGrounded = false;
+        
+        room.players.set(socket.id, {
+            id: socket.id,
+            name: username.substring(0, 16),
+            body: pBody,
+            input: { left: false, right: false, up: false },
+            eliminated: true,
+            score: 0
+        });
+
+        broadcastLobbyUpdate(room);
+    }
+
+    socket.on('startGame', ({ pointsToWin }) => {
+        const code = socketRooms[socket.id];
+        if (!code) return;
+        const room = rooms[code];
+        if (room.host !== socket.id) return;
+        if (room.state !== 'waiting') return;
+
+        room.pointsToWin = pointsToWin || 5;
+
+        startRound(room);
+        
+        if (!room.loopInterval) {
+            room.loopInterval = setInterval(() => {
+                roomLoop(room);
+            }, TICK_RATE);
+        }
+    });
+
     socket.on('input', (data) => {
-        const p = players[socket.id];
+        const code = socketRooms[socket.id];
+        if (!code) return;
+        const room = rooms[code];
+        if (room.state !== 'inRound') return;
+
+        const p = room.players.get(socket.id);
         if (!p || p.eliminated) return;
 
         if (data.type === 'keydown') {
@@ -94,81 +295,63 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        if (players[socket.id]) {
-            World.remove(engine.world, players[socket.id].body);
-            delete players[socket.id];
+    socket.on('leaveRoom', () => {
+        const code = socketRooms[socket.id];
+        if (code) {
+            socket.leave(code);
+            removePlayerFromRoom(socket.id);
         }
+    });
+
+    socket.on('disconnect', () => {
+        removePlayerFromRoom(socket.id);
     });
 });
 
-// Server game loop (60Hz)
-const TICK_RATE = 1000 / 60;
-setInterval(() => {
-    const state = {};
+function roomLoop(room) {
+    if (room.state !== 'inRound') return; // Only process physics if in round
 
-    Object.values(players).forEach(p => {
+    const state = { playerStates: {}, scores: null };
+
+    room.players.forEach(p => {
         if (p.eliminated) return;
 
-        const playerBody = p.body;
+        const pb = p.body;
         
-        if (playerBody.position.y > 800) {
+        if (pb.position.y > 800) {
             p.eliminated = true;
-            World.remove(engine.world, playerBody);
-            io.emit('playerEliminated', playerBody.socketId);
-
-            setTimeout(() => {
-                const sp = players[playerBody.socketId];
-                if (sp) {
-                    Body.setPosition(sp.body, { x: 400, y: 100 });
-                    Body.setVelocity(sp.body, { x: 0, y: 0 });
-                    World.add(engine.world, sp.body);
-                    sp.eliminated = false;
-                }
-            }, 3000);
+            World.remove(room.engine.world, pb);
+            io.to(room.id).emit('playerEliminated', p.id);
+            processRoomEndRound(room);
             return;
         }
 
-        const playerInput = p.input;
+        const input = p.input;
+        const moveForce = 0.015 * pb.mass;
+        if (input.left) Body.applyForce(pb, pb.position, { x: -moveForce, y: 0 });
+        if (input.right) Body.applyForce(pb, pb.position, { x: moveForce, y: 0 });
 
-        // Apply continuous forces based on held inputs
-        const moveForce = 0.015 * playerBody.mass;
-        if (playerInput.left) {
-            Body.applyForce(playerBody, playerBody.position, { x: -moveForce, y: 0 });
-        }
-        if (playerInput.right) {
-            Body.applyForce(playerBody, playerBody.position, { x: moveForce, y: 0 });
-        }
-
-        // Jump impulse
-        if (playerInput.up && playerBody.isGrounded) {
-            Matter.Sleeping.set(playerBody, false);
-            Body.setVelocity(playerBody, { x: playerBody.velocity.x, y: -12 });
-            playerInput.up = false; // consume jump
+        if (input.up && pb.isGrounded) {
+            Matter.Sleeping.set(pb, false);
+            Body.setVelocity(pb, { x: pb.velocity.x, y: -12 });
+            input.up = false;
         }
 
-        // Cap horizontal velocity
         const maxVelocity = 7;
-        if (playerBody.velocity.x > maxVelocity) {
-            Body.setVelocity(playerBody, { x: maxVelocity, y: playerBody.velocity.y });
-        } else if (playerBody.velocity.x < -maxVelocity) {
-            Body.setVelocity(playerBody, { x: -maxVelocity, y: playerBody.velocity.y });
-        }
+        if (pb.velocity.x > maxVelocity) Body.setVelocity(pb, { x: maxVelocity, y: pb.velocity.y });
+        else if (pb.velocity.x < -maxVelocity) Body.setVelocity(pb, { x: -maxVelocity, y: pb.velocity.y });
 
-        state[playerBody.socketId] = {
-            x: playerBody.position.x,
-            y: playerBody.position.y,
-            angle: playerBody.angle
+        state.playerStates[p.id] = {
+            x: pb.position.x,
+            y: pb.position.y,
+            angle: pb.angle,
+            name: p.name
         };
     });
 
-    // Step the physics engine forward
-    Engine.update(engine, TICK_RATE);
-
-    // Broadcast full state to all clients
-    io.emit('state', state);
-}, TICK_RATE);
+    Engine.update(room.engine, TICK_RATE);
+    io.to(room.id).emit('state', state);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

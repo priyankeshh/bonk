@@ -1,3 +1,7 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -5,17 +9,301 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-color: #1a1a1a;
-    font-family: sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    font-family: 'Outfit', sans-serif;
+    color: #f8fafc;
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 600px;
+}
+
+.screen.active {
+    display: flex;
+}
+
+.title {
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+    letter-spacing: 0.5rem;
+    background: linear-gradient(to right, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 100%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+input[type="text"], select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus, select:focus {
+    border-color: #38bdf8;
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+button.primary {
+    background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+    color: white;
+}
+
+button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.4);
+}
+
+button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+button.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+button.small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    margin-left: 10px;
+}
+
+button.large {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+}
+
+.divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.divider::before {
+    margin-right: .5em;
+}
+
+.divider::after {
+    margin-left: .5em;
+}
+
+.join-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.join-row input {
+    flex: 1;
+}
+
+.error {
+    color: #ef4444;
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0;
+    min-height: 1.2rem;
+}
+
+.room-title {
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+#playerList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#playerList li {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.host-badge {
+    background: #eab308;
+    color: #422006;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.setting-row select {
+    width: auto;
+}
+
+.waiting-text {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+/* Game Screen Elements */
+#screen-game {
+    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    position: relative;
+    width: 800px;
+    height: 600px;
 }
 
 #gameCanvas {
-    background-color: #f0f0f0;
-    border: 4px solid #333;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background-color: #1e293b;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    height: 100%;
 }
 
 #gameCanvas:focus {
     outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.overlay-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    min-width: 150px;
+    color: white;
+}
+
+.overlay-panel h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.5rem;
+}
+
+#scoreList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+#scoreList li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.flash-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    padding: 1.5rem 3rem;
+    border-radius: 12px;
+    font-size: 2rem;
+    font-weight: 800;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.flash-message.hidden {
+    opacity: 0;
+    display: none;
+}
+
+#finalScoreList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#finalScoreList li {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.2rem;
+    font-weight: 600;
 }
