@@ -6,8 +6,8 @@ canvas.width = 800;
 canvas.height = 600;
 
 // Track the state coming from the server
-// Default position before first tick
-let serverState = { x: 400, y: 100, angle: 0 };
+// Now a map of socket.id -> {x, y, angle}
+let serverState = {};
 
 // Listen for state updates
 // Future Phase 3: We will buffer these updates and interpolate between them.
@@ -61,26 +61,37 @@ function render() {
     // fillRect wants top-left coordinates: 400 - 400 = 0, 580 - 20 = 560
     ctx.fillRect(0, 560, 800, 40);
 
-    // Draw player
-    ctx.save();
-    ctx.translate(serverState.x, serverState.y);
-    ctx.rotate(serverState.angle);
+    // Draw all players
+    for (const id in serverState) {
+        const p = serverState[id];
+        
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, 2 * Math.PI);
+        
+        // Highlight own socket ID in red, others in blue
+        if (id === socket.id) {
+            ctx.fillStyle = '#ff4d4d'; // Red
+        } else {
+            ctx.fillStyle = '#4da6ff'; // Blue
+        }
+        
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, 2 * Math.PI);
-    ctx.fillStyle = '#ff4d4d'; // Red circle
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // Draw a visual indicator for rotation
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(20, 0);
-    ctx.stroke();
-
-    ctx.restore();
+        // Draw a visual indicator for rotation
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(20, 0);
+        ctx.stroke();
+        
+        ctx.restore();
+    }
 
     requestAnimationFrame(render);
 }
