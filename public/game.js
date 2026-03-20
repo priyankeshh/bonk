@@ -10,6 +10,7 @@ canvas.height = 600;
 let serverState = {};
 let platforms = [];
 let isEliminated = false;
+let respawnTime = 0;
 
 // Listen for state updates
 // Future Phase 3: We will buffer these updates and interpolate between them.
@@ -28,6 +29,7 @@ socket.on('mapData', (data) => {
 socket.on('playerEliminated', (id) => {
     if (id === socket.id) {
         isEliminated = true;
+        respawnTime = Date.now() + 3000;
     }
 });
 
@@ -117,7 +119,10 @@ function render() {
         ctx.fillStyle = 'white';
         ctx.font = '30px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('You were eliminated — respawning...', canvas.width / 2, canvas.height / 2);
+
+        const timeLeft = Math.max(0, Math.ceil((respawnTime - Date.now()) / 1000));
+        const text = timeLeft > 0 ? `You were eliminated — respawning in ${timeLeft}...` : 'Respawning...';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
     }
 
     requestAnimationFrame(render);

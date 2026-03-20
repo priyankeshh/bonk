@@ -24,7 +24,7 @@ engine.gravity.y = 1;
 
 const { platforms } = require('./shared/constants');
 const staticPlatforms = platforms.map(p => 
-    Bodies.rectangle(p.x, p.y, p.w, p.h, { isStatic: true })
+    Bodies.rectangle(p.x, p.y, p.w, p.h, { isStatic: true, friction: 0.01 })
 );
 
 // Create a single dynamic circle (Player)
@@ -59,9 +59,9 @@ io.on('connection', (socket) => {
 
     // Spawn a new player body for this connection
     const newPlayer = Bodies.circle(400, 100, 20, {
-        restitution: 0.4,
+        restitution: 0.5,
         frictionAir: 0.01,
-        friction: 0.8,
+        friction: 0.01,
         frictionStatic: 1.0,
         density: 0.001,
         inertia: Infinity,
@@ -126,14 +126,14 @@ setInterval(() => {
                     World.add(engine.world, sp.body);
                     sp.eliminated = false;
                 }
-            }, 2000);
+            }, 3000);
             return;
         }
 
         const playerInput = p.input;
 
         // Apply continuous forces based on held inputs
-        const moveForce = 0.005 * playerBody.mass;
+        const moveForce = 0.015 * playerBody.mass;
         if (playerInput.left) {
             Body.applyForce(playerBody, playerBody.position, { x: -moveForce, y: 0 });
         }
