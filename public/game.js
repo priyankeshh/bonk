@@ -59,13 +59,13 @@ function render() {
     // Server says: x=400 (center), y=580 (center), w=800, h=40
     ctx.fillStyle = '#333';
     // fillRect wants top-left coordinates: 400 - 400 = 0, 580 - 20 = 560
-    ctx.fillRect(0, 560, 800, 40); 
+    ctx.fillRect(0, 560, 800, 40);
 
     // Draw player
     ctx.save();
     ctx.translate(serverState.x, serverState.y);
     ctx.rotate(serverState.angle);
-    
+
     ctx.beginPath();
     ctx.arc(0, 0, 20, 0, 2 * Math.PI);
     ctx.fillStyle = '#ff4d4d'; // Red circle
@@ -79,7 +79,7 @@ function render() {
     ctx.moveTo(0, 0);
     ctx.lineTo(20, 0);
     ctx.stroke();
-    
+
     ctx.restore();
 
     requestAnimationFrame(render);
@@ -87,3 +87,8 @@ function render() {
 
 // Start rendering loop immediately (at display rate)
 render();
+
+// Focus canvas so the first keypress registers
+window.onload = () => {
+    canvas.focus();
+};

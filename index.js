@@ -29,7 +29,8 @@ const floor = Bodies.rectangle(400, 580, 800, 40, { isStatic: true });
 const player = Bodies.circle(400, 100, 20, { 
     restitution: 0.5, 
     friction: 0.05,
-    density: 0.002
+    density: 0.002,
+    sleepThreshold: -1
 });
 
 World.add(engine.world, [floor, player]);
@@ -83,6 +84,7 @@ setInterval(() => {
     
     // Jump impulse
     if (playerInput.up && isGrounded()) {
+        Matter.Sleeping.set(player, false);
         Body.setVelocity(player, { x: player.velocity.x, y: -12 });
         playerInput.up = false; // consume the jump edge so they don't hold it down forever
     }
