@@ -14,7 +14,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 const Engine = Matter.Engine,
       World = Matter.World,
       Bodies = Matter.Bodies,
-      Body = Matter.Body;
+      Body = Matter.Body,
+      Events = Matter.Events;
 
 // Create engine and world
 const engine = Engine.create();
@@ -31,6 +32,26 @@ const player = Bodies.circle(400, 100, 20, {
     friction: 0.05,
     density: 0.002,
     sleepThreshold: -1
+});
+
+player.isGrounded = false;
+
+Events.on(engine, 'collisionStart', (event) => {
+    event.pairs.forEach((pair) => {
+        if (pair.bodyA === player || pair.bodyB === player) player.isGrounded = true;
+    });
+});
+
+Events.on(engine, 'collisionActive', (event) => {
+    event.pairs.forEach((pair) => {
+        if (pair.bodyA === player || pair.bodyB === player) player.isGrounded = true;
+    });
+});
+
+Events.on(engine, 'collisionEnd', (event) => {
+    event.pairs.forEach((pair) => {
+        if (pair.bodyA === player || pair.bodyB === player) player.isGrounded = false;
+    });
 });
 
 World.add(engine.world, [floor, player]);
@@ -61,14 +82,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Helper to check if player is grounded 
-function isGrounded() {
-    // Floor is y=580, height=40. Top surface is 560. Player radius is 20.
-    // So Player is touching the ground if y >= 539.
-    // We also check velocity so they aren't considered grounded while flying upwards rapidly.
-    return Math.abs(player.velocity.y) < 1 && player.position.y >= 538;
-}
-
 // Server game loop (60Hz)
 // Note: setInterval drift is acceptable for this prototype
 const TICK_RATE = 1000 / 60;
@@ -83,7 +96,7 @@ setInterval(() => {
     }
     
     // Jump impulse
-    if (playerInput.up && isGrounded()) {
+    if (playerInput.up && player.isGrounded) {
         Matter.Sleeping.set(player, false);
         Body.setVelocity(player, { x: player.velocity.x, y: -12 });
         playerInput.up = false; // consume the jump edge so they don't hold it down forever
